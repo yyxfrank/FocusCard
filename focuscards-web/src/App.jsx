@@ -1,7 +1,13 @@
+import { useState } from 'react';
 import Toolbar from './components/Toolbar/Toolbar.jsx';
+import EditorPane from './components/Editor/EditorPane.jsx';
+import PreviewPane from './components/Preview/PreviewPane.jsx';
 import './index.css';
 
 function App() {
+  const [front, setFront] = useState('');
+  const [back, setBack] = useState('');
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* ── Toolbar ─────────────────────────────────────────────── */}
@@ -9,18 +15,19 @@ function App() {
 
       {/* ── Main content: Editor (left) + Preview (right) ──────── */}
       <main className="flex flex-1 overflow-hidden">
-        {/* Left pane — Text Editor (Task 3.3) */}
+        {/* Left pane — Text Editor */}
         <section className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-center flex-1 text-gray-400 dark:text-gray-600 text-sm">
-            Editor — Front / Back
-          </div>
+          <EditorPane
+            front={front}
+            back={back}
+            onFrontChange={setFront}
+            onBackChange={setBack}
+          />
         </section>
 
-        {/* Right pane — Markdown Preview (Task 3.2) */}
+        {/* Right pane — Markdown Preview */}
         <section className="flex-1 flex flex-col">
-          <div className="flex items-center justify-center flex-1 text-gray-400 dark:text-gray-600 text-sm">
-            Preview — KaTeX / Markdown
-          </div>
+          <PreviewPane front={front} back={back} />
         </section>
       </main>
     </div>
