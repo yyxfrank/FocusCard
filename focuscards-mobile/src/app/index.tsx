@@ -15,33 +15,44 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { fetchDecks, fetchAllDueCards, computeStreak } from '@/lib/syncEngine';
 
 export default function DashboardScreen() {
-  const [decks, setDecks] = useState([]);
-  const [dueCounts, setDueCounts] = useState({});
-  const [streak, setStreak] = useState(null);
+  const [decks, setDecks] = useState<any[]>([]);
+  const [dueCounts, setDueCounts] = useState<Record<string, number>>({});
+  const [streak, setStreak] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
+    setError(null);
 
-    const [decksResult, allDueCardsResult, streakResult] = await Promise.all([
-      fetchDecks(),
-      fetchAllDueCards(),
-      computeStreak(),
-    ]);
+    try {
+      const [decksResult, allDueCardsResult, streakResult] = await Promise.all([
+        fetchDecks(),
+        fetchAllDueCards(),
+        computeStreak(),
+      ]);
 
-    if (decksResult.data) setDecks(decksResult.data);
-
-    if (allDueCardsResult.data) {
-      const counts = {};
-      for (const card of allDueCardsResult.data) {
-        counts[card.deck_id] = (counts[card.deck_id] || 0) + 1;
+      const errMsg = decksResult.error ?? allDueCardsResult.error ?? streakResult.error;
+      if (errMsg) {
+        throw new Error(errMsg);
       }
-      setDueCounts(counts);
-    }
 
-    if (streakResult.data !== undefined) setStreak(streakResult.data);
+      if (decksResult.data) setDecks(decksResult.data);
+
+      if (allDueCardsResult.data) {
+        const counts: Record<string, number> = {};
+        for (const card of allDueCardsResult.data) {
+          counts[card.deck_id] = (counts[card.deck_id] || 0) + 1;
+        }
+        setDueCounts(counts);
+      }
+
+      if (streakResult.data !== undefined) setStreak(streakResult.data);
+    } catch (e: any) {
+      setError(e.message ?? 'Unable to connect to server. Please check your connection.');
+    }
 
     setLoading(false);
     setRefreshing(false);
@@ -51,12 +62,12 @@ export default function DashboardScreen() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const handleDeckPress = useCallback((deckId) => {
+  const handleDeckPress = useCallback((deckId: string) => {
     router.push(`/pre-review?deckId=${deckId}`);
   }, []);
 
   const renderDeckItem = useCallback(
-    ({ item }) => {
+    ({ item }: { item: any }) => {
       const due = dueCounts[item.id] ?? 0;
       return (
         <Pressable onPress={() => handleDeckPress(item.id)}>
@@ -74,7 +85,7 @@ export default function DashboardScreen() {
     [dueCounts, handleDeckPress],
   );
 
-  const keyExtractor = useCallback((item) => item.id, []);
+  const keyExtractor = useCallback((item: any) => item.id, []);
 
   // ── Loading state ────────────────────────────────────────────────
   if (loading) {
@@ -82,6 +93,20 @@ export default function DashboardScreen() {
       <ThemedView style={styles.centered}>
         <SafeAreaView style={styles.centeredSafeArea}>
           <ActivityIndicator size="large" />
+        </SafeAreaView>
+      </ThemedView>
+    );
+  }
+
+  // ── Error state ──────────────────────────────────────────────────
+  if (error) {
+    return (
+      <ThemedView style={styles.centered}>
+        <SafeAreaView style={styles.centeredSafeArea}>
+          <ThemedText style={styles.errorMessage}>{error}</ThemedText>
+          <Pressable onPress={() => loadDashboard()} style={styles.retryButton}>
+            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          </Pressable>
         </SafeAreaView>
       </ThemedView>
     );
@@ -204,5 +229,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
+  },
+  // ── Error state ────────────────────────────────────────────────
+  errorMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.four,
+    marginBottom: Spacing.four,
+  },
+  retryButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: Spacing.six,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

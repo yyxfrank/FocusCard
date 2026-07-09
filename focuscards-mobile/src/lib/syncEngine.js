@@ -53,6 +53,28 @@ export async function fetchDeck(id) {
   }
 }
 
+/**
+ * Update a deck's fields (e.g. daily_review_limit).
+ * @param {string} id      — Deck UUID.
+ * @param {object} updates — Fields to update (e.g. { daily_review_limit }).
+ * @returns {Promise<{ data: object|null, error: string|null }>}
+ */
+export async function updateDeck(id, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('decks')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (e) {
+    return { data: null, error: e.message };
+  }
+}
+
 // ── Cards ────────────────────────────────────────────────────────────
 
 /**
