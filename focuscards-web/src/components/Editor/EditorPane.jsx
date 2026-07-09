@@ -50,19 +50,41 @@ function EditorField({ label, value, onChange, placeholder }) {
 
 /**
  * @param {object}   props
- * @param {string}   [props.front]       — Front-side markdown content.
- * @param {string}   [props.back]        — Back-side markdown content.
- * @param {function} [props.onFrontChange] — Called with new front value.
- * @param {function} [props.onBackChange]  — Called with new back value.
+ * @param {string}   [props.front]            — Front-side markdown content.
+ * @param {string}   [props.back]             — Back-side markdown content.
+ * @param {function} [props.onFrontChange]     — Called with new front value.
+ * @param {function} [props.onBackChange]      — Called with new back value.
+ * @param {string}   [props.selectedDeckId]    — Currently selected deck id (null if none).
+ * @param {boolean}  [props.saving]            — True while a card save is in-flight.
  */
 export default function EditorPane({
   front = '',
   back = '',
   onFrontChange,
   onBackChange,
+  selectedDeckId,
+  saving,
 }) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {/* Save hint bar */}
+      <div className="flex items-center justify-end px-3 py-1 text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
+        {selectedDeckId ? (
+          saving ? (
+            <span className="text-blue-500">Saving…</span>
+          ) : (
+            <span>
+              <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800 font-mono text-[10px]">
+                {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+Enter
+              </kbd>{' '}
+              to save
+            </span>
+          )
+        ) : (
+          <span className="text-amber-500">Select a deck to start creating cards</span>
+        )}
+      </div>
+
       <EditorField
         label="Front"
         value={front}

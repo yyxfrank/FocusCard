@@ -37,7 +37,7 @@ function CodeBlock({ className, children }) {
 
 // ── Shared Markdown config ──────────────────────────────────────────
 
-const markdownPlugins = [remarkMath, remarkGfm];
+const markdownPlugins = [[remarkMath, { singleDollarTextMath: true }], remarkGfm];
 const rehypePlugins = [[rehypeKatex, { throwOnError: false }]];
 
 const markdownComponents = {
