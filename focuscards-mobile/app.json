@@ -8,9 +8,11 @@
     "scheme": "focuscardsmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.yourname.focuscards"
     },
     "android": {
+      "package": "com.yourname.focuscards",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -37,6 +39,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9284d602-a86a-4457-9ff7-8966aa3d8d2a"
+      }
+    },
+    "owner": "yyxfrank"
   }
 }
