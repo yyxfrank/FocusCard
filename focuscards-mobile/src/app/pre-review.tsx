@@ -74,38 +74,37 @@ export default function PreReviewScreen() {
     // Persist the adjusted limit
     await updateDeck(deckId, { daily_review_limit: limit });
 
-    router.push(`/review?deckId=${deckId}&limit=${limit}`);
+    const encodedName = encodeURIComponent(deck?.name ?? 'Deck');
+    router.push(`/review?deckId=${deckId}&limit=${limit}&deckName=${encodedName}`);
   }, [deckId, limit, starting]);
 
-  // ── Loading state ────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <ThemedView style={styles.centered}>
-        <SafeAreaView style={styles.centeredSafeArea}>
-          <ActivityIndicator size="large" />
-        </SafeAreaView>
-      </ThemedView>
-    );
+  function handleHomePress() {
+    router.replace('/');
   }
 
-  // ── Error state ──────────────────────────────────────────────────
-  if (error) {
-    return (
-      <ThemedView style={styles.centered}>
-        <SafeAreaView style={styles.centeredSafeArea}>
+  // ── Render content based on state ──────────────────────────────────
+  function renderContent() {
+    if (loading) {
+      return (
+        <View style={styles.centeredSafeArea}>
+          <ActivityIndicator size="large" />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.centeredSafeArea}>
           <ThemedText style={styles.errorMessage}>{error}</ThemedText>
           <Pressable onPress={loadDeck} style={styles.retryButton}>
             <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
           </Pressable>
-        </SafeAreaView>
-      </ThemedView>
-    );
-  }
+        </View>
+      );
+    }
 
-  // ── Render ───────────────────────────────────────────────────────
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    return (
+      <>
         {/* ── Deck name ──────────────────────────────── */}
         <ThemedView style={styles.header}>
           <ThemedText type="title">{deck?.name ?? 'Deck'}</ThemedText>
@@ -159,6 +158,25 @@ export default function PreReviewScreen() {
             </ThemedText>
           )}
         </Pressable>
+      </>
+    );
+  }
+
+  // ── Single return with always-visible topbar ───────────────────────
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        {/* ── Top bar (always visible) ──────────────────── */}
+        <View style={styles.topBar}>
+          <Pressable onPress={handleHomePress} style={styles.homeButton}>
+            <ThemedText style={styles.homeButtonText}>← Home</ThemedText>
+          </Pressable>
+          <ThemedText style={styles.breadcrumb} numberOfLines={1}>
+            Home / {deck?.name ?? 'Deck'}
+          </ThemedText>
+        </View>
+
+        {renderContent()}
       </SafeAreaView>
     </ThemedView>
   );
@@ -186,6 +204,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  // ── Top bar ──────────────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.half,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    gap: Spacing.two,
+  },
+  homeButton: {
+    paddingRight: Spacing.two,
+  },
+  homeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  breadcrumb: {
+    fontSize: 13,
+    color: '#6B7280',
+    flex: 1,
+  },
+
   // ── Header ─────────────────────────────────────────────────────
   header: {
     paddingVertical: Spacing.four,

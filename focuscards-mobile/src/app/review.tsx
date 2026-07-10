@@ -16,7 +16,7 @@ import Animated, {
   withTiming,
   interpolate,
 } from 'react-native-reanimated';
-import Markdown from 'react-native-markdown-display';
+import { MarkdownContent } from '@/components/markdown-content';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -27,9 +27,10 @@ import { calculateNextReview, evaluateSessionAction } from '@/utils/srsEngine';
 type Feedback = 'Forgotten' | 'Unfamiliar' | 'Familiar';
 
 export default function ReviewScreen() {
-  const { deckId, limit: limitParam } = useLocalSearchParams<{
+  const { deckId, limit: limitParam, deckName: deckNameParam } = useLocalSearchParams<{
     deckId: string;
     limit: string;
+    deckName?: string;
   }>();
   const limit = parseInt(limitParam ?? '20', 10);
   const { height: screenHeight } = useWindowDimensions();
@@ -160,8 +161,16 @@ export default function ReviewScreen() {
     }, 100);
   }
 
-  function handleFinish() {
+  function handleGoBack() {
     router.back();
+  }
+
+  function handleFinish() {
+    router.replace(`/?reviewedDeckId=${deckId}`);
+  }
+
+  function handleHomePress() {
+    router.replace('/');
   }
 
   // ── Animated styles ────────────────────────────────────────────────
@@ -192,53 +201,51 @@ export default function ReviewScreen() {
   const currentCard = pendingQueue[0] as any;
   const CARD_HEIGHT = screenHeight * 0.55;
 
-  // ── Loading ────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <ThemedView style={styles.centered}>
-        <SafeAreaView style={styles.centeredSafeArea}>
-          <ActivityIndicator size="large" />
-        </SafeAreaView>
-      </ThemedView>
-    );
-  }
+  // ── Determine breadcrumb tail ──────────────────────────────────────
+  const breadcrumbTail = loading || error || initialTotal === 0
+    ? ''
+    : pendingQueue.length === 0 && completedCount > 0
+    ? ' / Done'
+    : ` / Card ${String(currentCard?.id ?? '').slice(0, 8)}`;
 
-  // ── Error ──────────────────────────────────────────────────────────
-  if (error) {
-    return (
-      <ThemedView style={styles.centered}>
-        <SafeAreaView style={styles.centeredSafeArea}>
+  // ── Render content based on state ──────────────────────────────────
+  function renderContent() {
+    if (loading) {
+      return (
+        <View style={styles.centeredSafeArea}>
+          <ActivityIndicator size="large" />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.centeredSafeArea}>
           <ThemedText style={styles.errorMessage}>{error}</ThemedText>
           <Pressable onPress={loadCards} style={styles.retryButton}>
             <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
           </Pressable>
-        </SafeAreaView>
-      </ThemedView>
-    );
-  }
+        </View>
+      );
+    }
 
-  // ── Empty state (no due cards to begin with) ───────────────────────
-  if (initialTotal === 0) {
-    return (
-      <ThemedView style={styles.centered}>
-        <SafeAreaView style={styles.centeredSafeArea}>
+    if (initialTotal === 0) {
+      return (
+        <View style={styles.centeredSafeArea}>
           <ThemedText style={styles.emptyTitle}>All caught up!</ThemedText>
           <ThemedText style={styles.emptySubtitle}>
             No cards due for review in this deck.
           </ThemedText>
-          <Pressable onPress={handleFinish} style={styles.retryButton}>
-            <ThemedText style={styles.retryButtonText}>Go Back</ThemedText>
+          <Pressable onPress={handleGoBack} style={styles.retryButton}>
+            <ThemedText style={styles.retryButtonText}>← Back</ThemedText>
           </Pressable>
-        </SafeAreaView>
-      </ThemedView>
-    );
-  }
+        </View>
+      );
+    }
 
-  // ── Session complete ───────────────────────────────────────────────
-  if (pendingQueue.length === 0 && completedCount > 0) {
-    return (
-      <ThemedView style={styles.centered}>
-        <SafeAreaView style={styles.centeredSafeArea}>
+    if (pendingQueue.length === 0 && completedCount > 0) {
+      return (
+        <View style={styles.centeredSafeArea}>
           <ThemedText style={styles.emptyTitle}>Session Complete!</ThemedText>
           <ThemedText style={styles.emptySubtitle}>
             You reviewed all {completedCount} card
@@ -247,15 +254,13 @@ export default function ReviewScreen() {
           <Pressable onPress={handleFinish} style={styles.retryButton}>
             <ThemedText style={styles.retryButtonText}>Done</ThemedText>
           </Pressable>
-        </SafeAreaView>
-      </ThemedView>
-    );
-  }
+        </View>
+      );
+    }
 
-  // ── Card view ──────────────────────────────────────────────────────
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    // ── Card view ──────────────────────────────────────────────────
+    return (
+      <>
         {/* ── Progress ─────────────────────────────────── */}
         <ThemedText style={styles.progress}>
           Completed: {completedCount} / {initialTotal}{'  ·  '}
@@ -273,9 +278,9 @@ export default function ReviewScreen() {
                 style={styles.cardScroll}
                 contentContainerStyle={styles.cardScrollContent}
               >
-                <Markdown style={markdownStyles}>
+                <MarkdownContent style={markdownStyles}>
                   {currentCard?.front ?? ''}
-                </Markdown>
+                </MarkdownContent>
               </ScrollView>
             </Animated.View>
 
@@ -287,9 +292,9 @@ export default function ReviewScreen() {
                 style={styles.cardScroll}
                 contentContainerStyle={styles.cardScrollContent}
               >
-                <Markdown style={markdownStyles}>
+                <MarkdownContent style={markdownStyles}>
                   {currentCard?.back ?? ''}
-                </Markdown>
+                </MarkdownContent>
               </ScrollView>
             </Animated.View>
           </View>
@@ -349,6 +354,25 @@ export default function ReviewScreen() {
             </Pressable>
           </View>
         )}
+      </>
+    );
+  }
+
+  // ── Single return with always-visible topbar ───────────────────────
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        {/* ── Top bar (always visible) ──────────────────── */}
+        <View style={styles.topBar}>
+          <Pressable onPress={handleHomePress} style={styles.homeButton}>
+            <ThemedText style={styles.homeButtonText}>← Home</ThemedText>
+          </Pressable>
+          <ThemedText style={styles.breadcrumb} numberOfLines={1}>
+            Home / {deckNameParam ? decodeURIComponent(deckNameParam) : 'Deck'}{breadcrumbTail}
+          </ThemedText>
+        </View>
+
+        {renderContent()}
       </SafeAreaView>
     </ThemedView>
   );
@@ -418,6 +442,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // ── Top bar ──────────────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.half,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    gap: Spacing.two,
+  },
+  homeButton: {
+    paddingRight: Spacing.two,
+  },
+  homeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  breadcrumb: {
+    fontSize: 13,
+    color: '#6B7280',
+    flex: 1,
   },
 
   // ── Progress ─────────────────────────────────────────────────────

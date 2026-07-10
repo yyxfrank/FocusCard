@@ -2,28 +2,50 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { fetchDecks, fetchAllDueCards, computeStreak } from '@/lib/syncEngine';
+import { getCompletedDeckIds, addCompletedDeckId } from '@/lib/completedDecks';
 
 export default function DashboardScreen() {
+  const { reviewedDeckId: rawReviewedDeckId } = useLocalSearchParams<{
+    reviewedDeckId?: string;
+  }>();
+
   const [decks, setDecks] = useState<any[]>([]);
   const [dueCounts, setDueCounts] = useState<Record<string, number>>({});
   const [streak, setStreak] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completedDeckIds, setCompletedDeckIds] = useState<string[]>(() => getCompletedDeckIds());
+
+  // Track a deck that was just reviewed and navigated back from
+  useEffect(() => {
+    if (rawReviewedDeckId) {
+      addCompletedDeckId(rawReviewedDeckId);
+      setCompletedDeckIds((prev) => (prev.includes(rawReviewedDeckId) ? prev : [...prev, rawReviewedDeckId]));
+      // Clear the param from the URL so it doesn't re-trigger
+      if (Platform.OS === 'web') {
+        window.history.replaceState(null, '', '/');
+      }
+    }
+  }, [rawReviewedDeckId]);
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
+    if (isRefresh) {
+      setRefreshing(true);
+      setCompletedDeckIds(getCompletedDeckIds());
+    }
     else setLoading(true);
     setError(null);
 
@@ -69,20 +91,27 @@ export default function DashboardScreen() {
   const renderDeckItem = useCallback(
     ({ item }: { item: any }) => {
       const due = dueCounts[item.id] ?? 0;
+      const isCompleted = completedDeckIds.includes(item.id);
       return (
         <Pressable onPress={() => handleDeckPress(item.id)}>
           <ThemedView type="backgroundElement" style={styles.deckRow}>
             <ThemedText style={styles.deckName}>{item.name}</ThemedText>
-            {due > 0 && (
-              <ThemedView style={styles.badge}>
-                <ThemedText style={styles.badgeText}>{due}</ThemedText>
+            {isCompleted ? (
+              <ThemedView style={styles.completedBadge}>
+                <ThemedText style={styles.completedBadgeText}>✓ Completed</ThemedText>
               </ThemedView>
+            ) : (
+              due > 0 && (
+                <ThemedView style={styles.badge}>
+                  <ThemedText style={styles.badgeText}>{due}</ThemedText>
+                </ThemedView>
+              )
             )}
           </ThemedView>
         </Pressable>
       );
     },
-    [dueCounts, handleDeckPress],
+    [dueCounts, handleDeckPress, completedDeckIds],
   );
 
   const keyExtractor = useCallback((item: any) => item.id, []);
@@ -219,6 +248,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
   },
   badgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  completedBadge: {
+    backgroundColor: '#22C55E',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Spacing.five,
+  },
+  completedBadgeText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
