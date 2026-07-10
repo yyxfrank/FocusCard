@@ -2,7 +2,8 @@
  * FocusCards Web — CardManager
  *
  * Full-screen card list view for a selected deck.
- * Each card shows truncated front/back with Edit and Delete actions.
+ * Each card shows truncated front/back with Edit and Delete actions
+ * that slide in from the right on hover.
  *
  * @module components/CardManager/CardManager
  */
@@ -78,34 +79,37 @@ export default function CardManager({
             {cards.map((card) => (
               <div
                 key={card.id}
-                className="flex items-start gap-4 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors group"
+                className="group grid grid-cols-[1fr_auto] hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
               >
-                {/* Front */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
-                    Front
+                {/* ── Main card content — 1fr column ── */}
+                <div className="flex items-start gap-4 px-4 py-3 min-w-0">
+                  {/* Front */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
+                      Front
+                    </div>
+                    <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                      {card.front || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                    {card.front || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
+
+                  {/* Back */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
+                      Back
+                    </div>
+                    <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                      {card.back || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
+                    </div>
                   </div>
                 </div>
 
-                {/* Back */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
-                    Back
-                  </div>
-                  <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                    {card.back || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-4">
+                {/* ── Action buttons — auto column ── */}
+                <div className="flex items-center gap-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto bg-gray-50 dark:bg-gray-900 group-hover:bg-gray-100 dark:group-hover:bg-gray-800/50">
                   <button
                     onClick={() => onEditCard(card)}
                     className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 rounded transition-all cursor-pointer"
-                    title="Edit card"
+                    title="Update card"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />

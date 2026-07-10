@@ -30,6 +30,7 @@ function App() {
   const [browsing, setBrowsing] = useState(false);
   const [cards, setCards] = useState([]);
   const [cardsLoading, setCardsLoading] = useState(false);
+  const [editingCardId, setEditingCardId] = useState(null); // null = creating new; set = editing existing
 
   // ── Transient UI feedback states ─────────────────────────────────
   const [feedback, setFeedback] = useState(null); // { type: 'success'|'error'|'validation', message }
@@ -94,7 +95,9 @@ function App() {
   const handleEditCard = useCallback((card) => {
     setFront(card.front || '');
     setBack(card.back || '');
+    setEditingCardId(card.id);
     setBrowsing(false);
+    setFeedback(null);
   }, []);
 
   // ── Delete card ──────────────────────────────────────────────────
@@ -135,20 +138,26 @@ function App() {
     setSaving(true);
     setFeedback(null);
 
-    const result = await createCard(selectedDeckId, front, back);
+    let result;
+    if (editingCardId) {
+      result = await updateCard(editingCardId, { front, back });
+    } else {
+      result = await createCard(selectedDeckId, front, back);
+    }
     setSaving(false);
 
     if (result) {
       setFront('');
       setBack('');
-      setFeedback({ type: 'success', message: 'Card saved' });
+      setEditingCardId(null);
+      setFeedback({ type: 'success', message: editingCardId ? 'Card updated' : 'Card saved' });
       setTimeout(() => setFeedback(null), 2000);
     } else if (dbError) {
       setFeedback({ type: 'error', message: dbError });
     } else {
       setFeedback({ type: 'error', message: 'Failed to save card' });
     }
-  }, [selectedDeckId, front, back, saving, createCard, dbError]);
+  }, [selectedDeckId, front, back, saving, editingCardId, createCard, updateCard, dbError]);
 
   // ── Keyboard listener: Cmd+Enter / Ctrl+Enter ───────────────────
   useEffect(() => {
@@ -167,6 +176,7 @@ function App() {
     if (!selectedDeckId) return;
     setFront('');
     setBack('');
+    setEditingCardId(null);
     setFeedback(null);
   }, [selectedDeckId]);
 
@@ -224,6 +234,7 @@ function App() {
                 onFrontChange={setFront}
                 onBackChange={setBack}
                 selectedDeckId={selectedDeckId}
+                editingCardId={editingCardId}
                 saving={saving}
               />
             </section>

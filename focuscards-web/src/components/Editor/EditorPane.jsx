@@ -55,6 +55,7 @@ function EditorField({ label, value, onChange, placeholder }) {
  * @param {function} [props.onFrontChange]     — Called with new front value.
  * @param {function} [props.onBackChange]      — Called with new back value.
  * @param {string}   [props.selectedDeckId]    — Currently selected deck id (null if none).
+ * @param {string}   [props.editingCardId]     — Card id being edited (null if creating new).
  * @param {boolean}  [props.saving]            — True while a card save is in-flight.
  */
 export default function EditorPane({
@@ -63,12 +64,18 @@ export default function EditorPane({
   onFrontChange,
   onBackChange,
   selectedDeckId,
+  editingCardId,
   saving,
 }) {
   return (
     <div className="flex flex-col h-full relative">
       {/* Save hint bar */}
-      <div className="flex items-center justify-end px-3 py-1 text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center justify-between px-3 py-1 text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
+        {editingCardId ? (
+          <span className="text-blue-500 font-medium">Editing card</span>
+        ) : (
+          <span />
+        )}
         {selectedDeckId ? (
           saving ? (
             <span className="text-blue-500">Saving…</span>
