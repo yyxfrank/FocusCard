@@ -31,6 +31,7 @@ function App() {
   const [cards, setCards] = useState([]);
   const [cardsLoading, setCardsLoading] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null); // null = creating new; set = editing existing
+  const [dirty, setDirty] = useState(false); // true when editor has unsaved changes
 
   // ── Transient UI feedback states ─────────────────────────────────
   const [feedback, setFeedback] = useState(null); // { type: 'success'|'error'|'validation', message }
@@ -91,11 +92,23 @@ function App() {
     });
   }, [selectedDeckId, fetchCards]);
 
+  // ── Editor content change handlers ──────────────────────────────
+  const handleFrontChange = useCallback((value) => {
+    setFront(value);
+    setDirty(true);
+  }, []);
+
+  const handleBackChange = useCallback((value) => {
+    setBack(value);
+    setDirty(true);
+  }, []);
+
   // ── Edit card (populate editor from card list) ──────────────────
   const handleEditCard = useCallback((card) => {
     setFront(card.front || '');
     setBack(card.back || '');
     setEditingCardId(card.id);
+    setDirty(false);
     setBrowsing(false);
     setFeedback(null);
   }, []);
@@ -125,9 +138,9 @@ function App() {
       return;
     }
 
-    // Guard: empty submission (TEST.md Phase 4 — Empty Submission Preventer)
-    if (!front.trim() && !back.trim()) {
-      setFeedback({ type: 'validation', message: 'Front or Back must not be empty' });
+    // Guard: Front and Back must both be non-empty
+    if (!front.trim() || !back.trim()) {
+      setFeedback({ type: 'validation', message: 'Both Front and Back must not be empty' });
       setTimeout(() => setFeedback(null), 2500);
       return;
     }
@@ -150,6 +163,7 @@ function App() {
       setFront('');
       setBack('');
       setEditingCardId(null);
+      setDirty(false);
       setFeedback({ type: 'success', message: editingCardId ? 'Card updated' : 'Card saved' });
       setTimeout(() => setFeedback(null), 2000);
     } else if (dbError) {
@@ -174,11 +188,17 @@ function App() {
   // ── New Card button handler ──────────────────────────────────────
   const handleNewCard = useCallback(() => {
     if (!selectedDeckId) return;
+    if (dirty) {
+      setFeedback({ type: 'validation', message: 'Please save or discard current changes first' });
+      setTimeout(() => setFeedback(null), 2500);
+      return;
+    }
     setFront('');
     setBack('');
     setEditingCardId(null);
+    setDirty(false);
     setFeedback(null);
-  }, [selectedDeckId]);
+  }, [selectedDeckId, dirty]);
 
   // ── Render ───────────────────────────────────────────────────────
   return (
@@ -231,8 +251,8 @@ function App() {
               <EditorPane
                 front={front}
                 back={back}
-                onFrontChange={setFront}
-                onBackChange={setBack}
+                onFrontChange={handleFrontChange}
+                onBackChange={handleBackChange}
                 selectedDeckId={selectedDeckId}
                 editingCardId={editingCardId}
                 saving={saving}
