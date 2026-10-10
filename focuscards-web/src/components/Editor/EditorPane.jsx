@@ -14,6 +14,7 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { useEffect, useState } from 'react';
 import { EditorView } from '@codemirror/view';
 import { splitCodeExample, joinCodeExample } from '../../utils/codeExample.js';
+import { useWebTheme } from '../../hooks/useWebTheme.js';
 
 const codeLanguages = [
   ['javascript', 'JavaScript'], ['typescript', 'TypeScript'], ['python', 'Python'],
@@ -59,6 +60,7 @@ const extensions = [
 // ── Sub-editor component ──────────────────────────────────────────
 
 function EditorField({ label, value, onChange, placeholder }) {
+  const { theme } = useWebTheme();
   const example = splitCodeExample(value);
   const change = (updates) => onChange(joinCodeExample({ ...example, ...updates }));
   return (
@@ -77,7 +79,7 @@ function EditorField({ label, value, onChange, placeholder }) {
           value={example.text}
           onChange={(text) => change({ text })}
           extensions={extensions}
-          theme={oneDark}
+          theme={theme === 'dark' ? oneDark : 'light'}
           placeholder={placeholder}
           basicSetup={{
             lineNumbers: false,
@@ -87,7 +89,7 @@ function EditorField({ label, value, onChange, placeholder }) {
           }}
           minHeight={example.enabled ? '120px' : '180px'}
         />
-        {example.enabled && <div className="bg-black p-3">
+        {example.enabled && <div className="code-example-editor bg-black p-3">
           <label className="flex gap-2 items-center text-xs text-gray-300 mb-2">
             Language
             <select aria-label={`${label} code language`} value={example.language}

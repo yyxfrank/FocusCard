@@ -79,7 +79,7 @@ export default function ReviewPane({ deckId, onClose, onCompleted }) {
   }
 
   const allowance = summary ? Math.min(summary.due, Math.max(0, limit - summary.reviewed)) : 0;
-  return <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  return <div className="review-page h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <div className="max-w-3xl mx-auto p-4 sm:p-8 flex flex-col gap-5">
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Review · {summary?.deck.name ?? 'Deck'}</h1>

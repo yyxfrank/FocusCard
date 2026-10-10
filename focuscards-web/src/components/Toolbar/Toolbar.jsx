@@ -69,11 +69,11 @@ export default function Toolbar({
   // ── Render ───────────────────────────────────────────────────────
 
   return (
-    <header className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 select-none">
+    <header className="workspace-toolbar flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 select-none">
       {/* ── Left: Branding + Deck selector ────────────────────────── */}
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
-          FocusCards
+          <span className="workspace-logo" aria-hidden="true">F</span> FocusCards
         </h1>
 
         {/* Deck selector button + dropdown */}
