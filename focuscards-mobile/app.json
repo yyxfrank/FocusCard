@@ -2,7 +2,7 @@
   "expo": {
     "name": "focuscards-mobile",
     "slug": "focuscards-mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "focuscardsmobile",
@@ -36,7 +36,9 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

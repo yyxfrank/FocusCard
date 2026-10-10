@@ -25,7 +25,7 @@ function CodeBlock({ className, children }) {
       style={oneDark}
       language={match[1]}
       PreTag="div"
-      customStyle={{ margin: 0, borderRadius: '0.375rem', fontSize: '0.8125rem' }}
+      customStyle={{ margin: 0, background: '#09090b', borderRadius: '0.375rem', fontSize: '0.8125rem' }}
     >
       {code}
     </SyntaxHighlighter>

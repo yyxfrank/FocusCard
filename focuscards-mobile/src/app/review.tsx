@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -35,7 +34,6 @@ export default function ReviewScreen() {
   }>();
   const parsedLimit = Number(limitParam ?? '20');
   const limit = Number.isInteger(parsedLimit) ? Math.max(1, Math.min(200, parsedLimit)) : 20;
-  const { height: screenHeight } = useWindowDimensions();
 
   const [pendingQueue, setPendingQueue] = useState<any[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
@@ -195,7 +193,6 @@ export default function ReviewScreen() {
 
   // ── Derived values ─────────────────────────────────────────────────
   const currentCard = pendingQueue[0] as any;
-  const CARD_HEIGHT = screenHeight * 0.55;
 
   // ── Determine breadcrumb tail ──────────────────────────────────────
   const breadcrumbTail = loading || error || initialTotal === 0
@@ -265,9 +262,10 @@ export default function ReviewScreen() {
 
         {/* ── Card ─────────────────────────────────────── */}
         <Pressable onPress={handleFlip} style={styles.cardWrapper}>
-          <View style={[styles.cardContainer, { minHeight: CARD_HEIGHT }]}>
+          <View style={styles.cardContainer}>
             <Animated.View
               key={`front-${currentCard?.id ?? 0}`}
+              pointerEvents={flipped ? 'none' : 'auto'}
               style={[styles.cardFace, frontAnimatedStyle]}
             >
               <ScrollView
@@ -282,6 +280,7 @@ export default function ReviewScreen() {
 
             <Animated.View
               key={`back-${currentCard?.id ?? 0}`}
+              pointerEvents={flipped ? 'auto' : 'none'}
               style={[styles.cardFace, backAnimatedStyle]}
             >
               <ScrollView
@@ -357,7 +356,7 @@ export default function ReviewScreen() {
   // ── Single return with always-visible topbar ───────────────────────
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
         {/* ── Top bar (always visible) ──────────────────── */}
         <View style={styles.topBar}>
           <Pressable onPress={handleHomePress} style={styles.homeButton}>
@@ -476,9 +475,11 @@ const styles = StyleSheet.create({
   // ── Card ──────────────────────────────────────────────────────────
   cardWrapper: {
     flex: 1,
-    justifyContent: 'center',
+    minHeight: 0,
   },
   cardContainer: {
+    flex: 1,
+    minHeight: 0,
     borderRadius: Spacing.three,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
@@ -490,6 +491,7 @@ const styles = StyleSheet.create({
   },
   cardFace: {
     flex: 1,
+    minHeight: 0,
     padding: Spacing.four,
   },
   cardScroll: {

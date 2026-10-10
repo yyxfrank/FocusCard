@@ -5,6 +5,7 @@ import PreviewPane from './components/Preview/PreviewPane.jsx';
 import CardManager from './components/CardManager/CardManager.jsx';
 import { useSupabase } from './hooks/useSupabase.js';
 import { supabase } from './lib/supabase.js';
+import { splitCodeExample } from './utils/codeExample.js';
 import './index.css';
 
 function App() {
@@ -170,7 +171,11 @@ function App() {
     }
 
     // Guard: Front and Back must both be non-empty
-    if (!front.trim() || !back.trim()) {
+    const hasContent = (value) => {
+      const example = splitCodeExample(value);
+      return Boolean(example.text.trim() || (example.enabled && example.code.trim()));
+    };
+    if (!hasContent(front) || !hasContent(back)) {
       setFeedback({ type: 'validation', message: 'Both Front and Back must not be empty' });
       setTimeout(() => setFeedback(null), 2500);
       return;

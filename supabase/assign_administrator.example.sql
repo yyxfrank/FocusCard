@@ -23,7 +23,7 @@ begin
       select 1 from public.check_ins owned
       where owned.user_id = owner_id and owned.check_in_date = legacy.check_in_date
     )
-    order by legacy.check_in_date, legacy.created_at, legacy.id
+    order by legacy.check_in_date, legacy.id
   );
 end $$;
 commit;

@@ -2,7 +2,6 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 
 type MarkdownContentProps = {
   children: string;
@@ -13,8 +12,10 @@ export function MarkdownContent({ children }: MarkdownContentProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
+      rehypePlugins={[[rehypeKatex, { output: 'mathml', throwOnError: false }]]}
       components={{
+        pre: ({ children }) => <pre style={{ backgroundColor: '#09090b', color: '#f4f4f5',
+          padding: 12, borderRadius: 8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{children}</pre>,
         h1: ({ children }) => (
           <h1
             style={{
@@ -72,21 +73,7 @@ export function MarkdownContent({ children }: MarkdownContentProps) {
               </code>
             );
           }
-          return (
-            <pre
-              style={{
-                backgroundColor: '#E8E8ED',
-                fontFamily: 'monospace',
-                fontSize: 14,
-                padding: 12,
-                borderRadius: 8,
-                margin: '8px 0',
-                overflow: 'auto',
-              }}
-            >
-              <code {...props}>{children}</code>
-            </pre>
-          );
+          return <code className={className} style={{ fontFamily: 'monospace', fontSize: 14 }} {...props}>{children}</code>;
         },
         ul: ({ children }) => (
           <ul style={{ margin: 0, marginBottom: 8, paddingLeft: 24 }}>

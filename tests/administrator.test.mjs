@@ -10,6 +10,10 @@ test('administrator assignment preserves data and is repeatable', async (t) => {
     create role anon; create role authenticated; create schema auth;
     create table auth.users(id uuid primary key, email text, raw_app_meta_data jsonb);
     create function auth.uid() returns uuid language sql stable as 'select null::uuid';
+    -- Simulate the original production table, which has no created_at column.
+    create table public.check_ins (
+      id uuid primary key default gen_random_uuid(), check_in_date date not null
+    );
   `);
   await db.exec(await readFile(new URL('../supabase/migrations/202610080001_user_isolation_and_reviews.sql', import.meta.url), 'utf8'));
   await db.exec(`

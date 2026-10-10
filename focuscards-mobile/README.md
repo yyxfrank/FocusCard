@@ -1,5 +1,17 @@
 # Welcome to your Expo app 👋
 
+This client targets Expo SDK 57, React Native 0.86.3, and React 19.2.3.
+Use Node.js 22.13 or newer. After installing dependencies, start with
+`npx expo start --clear` to discard Metro caches from the previous SDK.
+
+Existing SDK 54 development/production builds must be rebuilt before running
+this client. The app version and OTA runtime are now 1.1.0, keeping SDK 57
+updates separate from the old native runtime. Use an SDK 57-compatible Expo Go
+or rebuild your development client. SDK 57 requires iOS 16.4 or newer.
+
+Validate with `npx expo install --check`, `npx expo-doctor`, and
+`npx tsc --noEmit`. Routes live in `src/app`.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

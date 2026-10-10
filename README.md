@@ -7,12 +7,12 @@ A distraction-free flashcard ecosystem for computer science and mathematics. Web
 ```
 FocusCard/
 ├── focuscards-web/       # Card creation & management (Vite + React)
-├── focuscards-mobile/    # Card review & spaced repetition (Expo SDK 54)
+├── focuscards-mobile/    # Card review & spaced repetition (Expo SDK 57)
 └── prompts/              # Development documentation & specifications
 ```
 
 - **Web Client** — Vite + React 19 + Tailwind CSS + CodeMirror editor. Used for creating, editing, and managing flashcards with live Markdown/LaTeX preview.
-- **Mobile Client** — Expo SDK 54 (React Native 0.81). Used for reviewing cards with SM-2 spaced repetition algorithm.
+- **Mobile Client** — Expo SDK 57 (React Native 0.86). Used for reviewing cards with SM-2 spaced repetition algorithm.
 - **Backend** — Supabase (PostgreSQL). Stores decks, cards, and check-in streaks.
 
 ## Features
@@ -27,7 +27,7 @@ FocusCard/
 
 ### Prerequisites
 
-- Node.js >= 22
+- Node.js >= 22.13
 - Supabase project (create one at [supabase.com](https://supabase.com))
 - `.env` files with Supabase credentials in both `focuscards-web/` and `focuscards-mobile/`
 - Apply the migration and enable email authentication as described in [supabase/README.md](supabase/README.md). Both clients require sign-in; use the same account to sync your cards.
@@ -93,7 +93,7 @@ src/
 
 | Layer | Web | Mobile |
 |-------|-----|--------|
-| **Framework** | Vite 8 + React 19 | Expo SDK 54 (React Native 0.81) |
+| **Framework** | Vite 8 + React 19 | Expo SDK 57 (React Native 0.86) |
 | **Styling** | Tailwind CSS 4 | StyleSheet |
 | **Editor** | CodeMirror 6 + @uiw/react-codemirror | — |
 | **Rendering** | react-markdown + rehype-katex | react-native-markdown-display + KaTeX |

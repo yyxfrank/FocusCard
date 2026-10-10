@@ -25,6 +25,11 @@ test('migration, ownership and daily review transactions', async (t) => {
   await db.exec(migration);
   await db.exec('create policy old_public_access on public.decks for all using (true) with check (true)');
   await db.exec(migration); // Repeatability matters for existing installations.
+  // Older deployments may be missing the two RPCs added late in the migration.
+  await db.exec('drop function public.get_due_counts(); drop function public.get_daily_review_count(uuid)');
+  const repair = await readFile(new URL('../supabase/migrations/202610100001_refresh_review_rpcs.sql', import.meta.url), 'utf8');
+  await db.exec(repair);
+  await db.exec(repair);
   const asUser = async (id) => {
     await db.exec('reset role');
     await db.query("select set_config('request.jwt.claim.sub', $1, false)", [id]);

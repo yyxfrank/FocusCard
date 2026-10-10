@@ -260,6 +260,7 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 48,
+    lineHeight: 60,
     fontWeight: '700',
   },
   // ── Stepper ────────────────────────────────────────────────────
@@ -300,6 +301,7 @@ const styles = StyleSheet.create({
   },
   stepValueText: {
     fontSize: 22,
+    lineHeight: 30,
     fontWeight: '600',
   },
   // ── Summary ────────────────────────────────────────────────────
