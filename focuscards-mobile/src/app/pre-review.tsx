@@ -11,7 +11,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { fetchDeck, fetchDueCards, updateDeck } from '@/lib/syncEngine';
+import { fetchDeck, countDueCards, fetchDailyReviewCount, updateDeck } from '@/lib/syncEngine';
 
 export default function PreReviewScreen() {
   const { deckId } = useLocalSearchParams<{ deckId: string }>();
@@ -19,12 +19,17 @@ export default function PreReviewScreen() {
   const [deck, setDeck] = useState<any>(null);
   const [limit, setLimit] = useState(20);
   const [dueCount, setDueCount] = useState(0);
+  const [reviewedToday, setReviewedToday] = useState(0);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!deckId) return;
+    if (!deckId) {
+      setError('Select a deck before starting a review.');
+      setLoading(false);
+      return;
+    }
     loadDeck();
   }, [deckId]);
 
@@ -33,23 +38,23 @@ export default function PreReviewScreen() {
     setError(null);
 
     try {
-      const [deckResult, dueResult] = await Promise.all([
+      const [deckResult, dueResult, reviewedResult] = await Promise.all([
         fetchDeck(deckId),
-        fetchDueCards(deckId, 9999),
+        countDueCards(deckId),
+        fetchDailyReviewCount(deckId),
       ]);
 
-      const errMsg = deckResult.error ?? dueResult.error;
+      const errMsg = deckResult.error ?? dueResult.error ?? reviewedResult.error;
       if (errMsg) {
         throw new Error(errMsg);
       }
 
       if (deckResult.data) {
         setDeck(deckResult.data);
-        setLimit((deckResult.data as any).daily_review_limit ?? 20);
+        setLimit(Math.max(1, Math.min(200, Number((deckResult.data as any).daily_review_limit) || 20)));
       }
-      if (dueResult.data) {
-        setDueCount(dueResult.data.length);
-      }
+      setDueCount(dueResult.data);
+      setReviewedToday(reviewedResult.data);
     } catch (e: any) {
       setError(e.message ?? 'Unable to connect to server. Please check your connection.');
     }
@@ -65,18 +70,24 @@ export default function PreReviewScreen() {
     setLimit((prev) => Math.min(200, prev + 5));
   }, []);
 
-  const reviewCount = useMemo(() => Math.min(dueCount, limit), [dueCount, limit]);
+  const reviewCount = useMemo(() => Math.min(dueCount, Math.max(0, limit - reviewedToday)), [dueCount, limit, reviewedToday]);
 
   const handleStartReview = useCallback(async () => {
-    if (!deckId || starting) return;
+    if (!deckId || starting || reviewCount === 0) return;
     setStarting(true);
 
     // Persist the adjusted limit
-    await updateDeck(deckId, { daily_review_limit: limit });
+    const result = await updateDeck(deckId, { daily_review_limit: limit });
+    if (result.error) {
+      setError(result.error);
+      setStarting(false);
+      return;
+    }
 
     const encodedName = encodeURIComponent(deck?.name ?? 'Deck');
     router.push(`/review?deckId=${deckId}&limit=${limit}&deckName=${encodedName}`);
-  }, [deckId, limit, starting]);
+    setStarting(false);
+  }, [deckId, limit, starting, deck?.name, reviewCount]);
 
   function handleHomePress() {
     router.replace('/');
@@ -134,7 +145,7 @@ export default function PreReviewScreen() {
 
         {/* ── Review summary ─────────────────────────── */}
         <ThemedText style={styles.summary}>
-          You will review {reviewCount} card{reviewCount !== 1 ? 's' : ''} today.
+          You will review {reviewCount} card{reviewCount !== 1 ? 's' : ''} today. {reviewedToday} already reviewed (day resets at 00:00 UTC).
         </ThemedText>
 
         {/* ── Spacer ─────────────────────────────────── */}
@@ -143,10 +154,10 @@ export default function PreReviewScreen() {
         {/* ── Start Review button ────────────────────── */}
         <Pressable
           onPress={handleStartReview}
-          disabled={starting || dueCount === 0}
+          disabled={starting || reviewCount === 0}
           style={({ pressed }) => [
             styles.startButton,
-            (starting || dueCount === 0) && styles.startButtonDisabled,
+            (starting || reviewCount === 0) && styles.startButtonDisabled,
             pressed && styles.startButtonPressed,
           ]}
         >
@@ -154,7 +165,7 @@ export default function PreReviewScreen() {
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <ThemedText style={styles.startButtonText}>
-              {dueCount === 0 ? 'No cards due' : 'Start Review'}
+              {dueCount === 0 ? 'No cards due' : reviewCount === 0 ? 'Daily limit reached' : 'Start Review'}
             </ThemedText>
           )}
         </Pressable>

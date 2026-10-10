@@ -18,7 +18,6 @@ import { calculateNextReview, evaluateSessionAction } from './srsEngine.js';
 const fixedDate = (iso) => new Date(iso);
 
 /** Strip sub-second precision for stable comparisons. */
-const dateOnly = (iso) => iso.split('.')[0] + 'Z';
 
 // ── Phase 2 — SM-2 Interval Calculations ────────────────────────────
 
@@ -173,10 +172,3 @@ describe('Query Constraints (mobile fetch limit)', () => {
 });
 
 // ── Smoke: run from web workspace root ─────────────────────────────
-
-import { run } from 'node:test';
-import { tap } from 'node:test/reporters';
-
-if (process.argv[1] === import.meta.filename) {
-  run({ files: [import.meta.filename] }).compose(tap).pipe(process.stdout);
-}

@@ -47,6 +47,12 @@
         "projectId": "9284d602-a86a-4457-9ff7-8966aa3d8d2a"
       }
     },
-    "owner": "yyxfrank"
+    "owner": "yyxfrank",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9284d602-a86a-4457-9ff7-8966aa3d8d2a"
+    }
   }
 }

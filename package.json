@@ -1,3 +1,9 @@
 {
-  "private": true
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs focuscards-web/src/utils/srsEngine.test.js focuscards-mobile/src/utils/calendar.test.js"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
 }

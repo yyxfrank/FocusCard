@@ -12,6 +12,7 @@
  */
 
 import { supabase } from './supabase.js';
+import { streakFromDates } from '../utils/calendar.js';
 
 // ── Decks ────────────────────────────────────────────────────────────
 
@@ -91,13 +92,17 @@ export async function updateDeck(id, updates) {
  */
 export async function fetchDueCards(deckId, limit) {
   try {
+    const reviewed = await fetchDailyReviewCount(deckId);
+    if (reviewed.error) throw new Error(reviewed.error);
+    const remaining = Math.max(0, limit - reviewed.data);
+    if (remaining === 0) return { data: [], error: null };
     const { data, error } = await supabase
       .from('cards')
       .select('*')
       .eq('deck_id', deckId)
       .lte('next_review', new Date().toISOString())
       .order('next_review', { ascending: true })
-      .limit(limit);
+      .limit(remaining);
 
     if (error) throw error;
     return { data, error: null };
@@ -107,24 +112,26 @@ export async function fetchDueCards(deckId, limit) {
 }
 
 /**
- * Fetch due cards across ALL decks, capped globally.
+ * Fetch due cards across all decks using pagination.
  *
  * Useful for the Dashboard to show a total "cards due" badge.
  *
- * @param {number} limit — Global max (e.g. 200).
  * @returns {Promise<{ data: Array|null, error: string|null }>}
  */
-export async function fetchAllDueCards(limit = 200) {
+export async function fetchAllDueCards() {
   try {
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .lte('next_review', new Date().toISOString())
-      .order('next_review', { ascending: true })
-      .limit(limit);
-
-    if (error) throw error;
-    return { data, error: null };
+    const cards = [];
+    const now = new Date().toISOString();
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase.from('cards')
+        .select('id, deck_id').lte('next_review', now)
+        .order('id', { ascending: true }).range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      cards.push(...(data ?? []));
+      if (!data || data.length < pageSize) break;
+    }
+    return { data: cards, error: null };
   } catch (e) {
     return { data: null, error: e.message };
   }
@@ -141,11 +148,12 @@ export async function fetchAllDueCards(limit = 200) {
 export async function updateCard(id, updates) {
   try {
     const { data, error } = await supabase
-      .from('cards')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+      .rpc('record_review', {
+        p_card_id: id,
+        p_interval_days: updates.interval_days,
+        p_ease_factor: updates.ease_factor,
+        p_next_review: updates.next_review,
+      });
 
     if (error) throw error;
     return { data, error: null };
@@ -183,7 +191,7 @@ export async function createCheckIn(checkInDate) {
   try {
     const { data, error } = await supabase
       .from('check_ins')
-      .insert({ check_in_date: checkInDate })
+      .upsert({ check_in_date: checkInDate }, { onConflict: 'user_id,check_in_date' })
       .select()
       .single();
 
@@ -212,28 +220,40 @@ export async function computeStreak() {
     if (error) throw error;
     if (!data || data.length === 0) return { data: 0, error: null };
 
-    let streak = 0;
-    const today = new Date();
-    let cursor = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-
-    for (const row of data) {
-      const rowDate = new Date(row.check_in_date + 'T00:00:00Z');
-      const diff = Math.round((cursor - rowDate) / 86400000);
-
-      if (diff === 0) {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else if (diff === 1) {
-        // Allow missing today if yesterday exists (streak continues from yesterday)
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-
-    return { data: streak, error: null };
+    return { data: streakFromDates(data), error: null };
   } catch (e) {
     return { data: 0, error: e.message };
   }
+}
+
+export async function countDueCards(deckId) {
+  try {
+    const { count, error } = await supabase.from('cards')
+      .select('id', { count: 'exact', head: true }).eq('deck_id', deckId)
+      .lte('next_review', new Date().toISOString());
+    return { data: count ?? 0, error: error?.message ?? null };
+  } catch (e) { return { data: 0, error: e.message }; }
+}
+
+export async function fetchDailyReviewCount(deckId) {
+  try {
+    const { data, error } = await supabase.rpc('get_daily_review_count', { p_deck_id: deckId });
+    return { data: Number(data ?? 0), error: error?.message ?? null };
+  } catch (e) { return { data: 0, error: e.message }; }
+}
+
+export async function fetchDueCounts() {
+  try {
+    const { data, error } = await supabase.rpc('get_due_counts');
+    return { data, error: error?.message ?? null };
+  } catch (e) { return { data: null, error: e.message }; }
+}
+
+export function subscribeToChanges(onChange) {
+  const channel = supabase.channel(`mobile-${Math.random()}`);
+  for (const table of ['decks', 'cards', 'check_ins']) {
+    channel.on('postgres_changes', { event: '*', schema: 'public', table }, onChange);
+  }
+  channel.subscribe();
+  return () => { void supabase.removeChannel(channel); };
 }

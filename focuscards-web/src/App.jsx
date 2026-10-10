@@ -4,11 +4,11 @@ import EditorPane from './components/Editor/EditorPane.jsx';
 import PreviewPane from './components/Preview/PreviewPane.jsx';
 import CardManager from './components/CardManager/CardManager.jsx';
 import { useSupabase } from './hooks/useSupabase.js';
+import { supabase } from './lib/supabase.js';
 import './index.css';
 
 function App() {
   const {
-    loading,
     error: dbError,
     fetchDecks,
     createDeck,
@@ -43,25 +43,39 @@ function App() {
 
   // ── Deck selection ───────────────────────────────────────────────
   const handleSelectDeck = useCallback((id, name) => {
+    if (saving || id === selectedDeckId) return;
+    if (dirty && !window.confirm('Discard unsaved changes and switch decks?')) return;
+    setFront('');
+    setBack('');
+    setEditingCardId(null);
+    setDirty(false);
+    setCards([]);
     setSelectedDeckId(id);
     setSelectedDeckName(name);
     setBrowsing(false);
     setFeedback(null);
-  }, []);
+  }, [saving, dirty, selectedDeckId]);
 
   // ── Deck creation ────────────────────────────────────────────────
   const handleCreateDeck = useCallback(
     async (name) => {
+      if (saving || (dirty && !window.confirm('Discard unsaved changes and create a deck?'))) return;
       const deck = await createDeck(name);
       if (deck) {
-        setDecks((prev) => [deck, ...prev]);
+        setFront('');
+        setBack('');
+        setEditingCardId(null);
+        setDirty(false);
+        setBrowsing(false);
+        setCards([]);
+        setDecks((prev) => [deck, ...prev.filter((item) => item.id !== deck.id)]);
         setSelectedDeckId(deck.id);
         setSelectedDeckName(deck.name);
         setFeedback({ type: 'success', message: `Deck "${deck.name}" created` });
         setTimeout(() => setFeedback(null), 2500);
       }
     },
-    [createDeck],
+    [createDeck, saving, dirty],
   );
 
   // ── Deck deletion ────────────────────────────────────────────────
@@ -71,6 +85,12 @@ function App() {
       if (success) {
         setDecks((prev) => prev.filter((d) => d.id !== id));
         if (selectedDeckId === id) {
+          setFront('');
+          setBack('');
+          setEditingCardId(null);
+          setDirty(false);
+          setBrowsing(false);
+          setCards([]);
           setSelectedDeckId(null);
           setSelectedDeckName('');
         }
@@ -91,6 +111,17 @@ function App() {
       setCardsLoading(false);
     });
   }, [selectedDeckId, fetchCards]);
+
+  useEffect(() => {
+    const channel = supabase.channel('web-card-manager')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'decks' }, () => {
+        fetchDecks().then(setDecks);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, () => {
+        if (selectedDeckId && browsing) fetchCards(selectedDeckId).then(setCards);
+      }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [fetchDecks, fetchCards, selectedDeckId, browsing]);
 
   // ── Editor content change handlers ──────────────────────────────
   const handleFrontChange = useCallback((value) => {
@@ -202,7 +233,7 @@ function App() {
 
   // ── Render ───────────────────────────────────────────────────────
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       <Toolbar
         streak={0}
         decks={decks}

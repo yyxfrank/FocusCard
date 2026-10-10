@@ -8,12 +8,12 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { fetchDecks, fetchAllDueCards, computeStreak } from '@/lib/syncEngine';
+import { fetchDecks, fetchDueCounts, computeStreak, subscribeToChanges } from '@/lib/syncEngine';
 import { getCompletedDeckIds, addCompletedDeckId } from '@/lib/completedDecks';
 
 export default function DashboardScreen() {
@@ -27,12 +27,12 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completedDeckIds, setCompletedDeckIds] = useState<string[]>(() => getCompletedDeckIds());
+  const [completedDeckIds, setCompletedDeckIds] = useState<string[]>([]);
 
   // Track a deck that was just reviewed and navigated back from
   useEffect(() => {
     if (rawReviewedDeckId) {
-      addCompletedDeckId(rawReviewedDeckId);
+      addCompletedDeckId(rawReviewedDeckId).catch((e) => setError(e.message));
       setCompletedDeckIds((prev) => (prev.includes(rawReviewedDeckId) ? prev : [...prev, rawReviewedDeckId]));
       // Clear the param from the URL so it doesn't re-trigger
       if (Platform.OS === 'web') {
@@ -44,15 +44,15 @@ export default function DashboardScreen() {
   const loadDashboard = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
-      setCompletedDeckIds(getCompletedDeckIds());
     }
     else setLoading(true);
     setError(null);
 
     try {
+      setCompletedDeckIds(await getCompletedDeckIds());
       const [decksResult, allDueCardsResult, streakResult] = await Promise.all([
         fetchDecks(),
-        fetchAllDueCards(),
+        fetchDueCounts(),
         computeStreak(),
       ]);
 
@@ -66,7 +66,7 @@ export default function DashboardScreen() {
       if (allDueCardsResult.data) {
         const counts: Record<string, number> = {};
         for (const card of allDueCardsResult.data) {
-          counts[card.deck_id] = (counts[card.deck_id] || 0) + 1;
+          counts[card.deck_id] = Number(card.due_count);
         }
         setDueCounts(counts);
       }
@@ -80,8 +80,12 @@ export default function DashboardScreen() {
     setRefreshing(false);
   }, []);
 
+  useFocusEffect(useCallback(() => {
+    void loadDashboard();
+  }, [loadDashboard]));
+
   useEffect(() => {
-    loadDashboard();
+    return subscribeToChanges(() => { void loadDashboard(true); });
   }, [loadDashboard]);
 
   const handleDeckPress = useCallback((deckId: string) => {
@@ -91,7 +95,7 @@ export default function DashboardScreen() {
   const renderDeckItem = useCallback(
     ({ item }: { item: any }) => {
       const due = dueCounts[item.id] ?? 0;
-      const isCompleted = completedDeckIds.includes(item.id);
+      const isCompleted = due === 0 && completedDeckIds.includes(item.id);
       return (
         <Pressable onPress={() => handleDeckPress(item.id)}>
           <ThemedView type="backgroundElement" style={styles.deckRow}>

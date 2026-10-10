@@ -30,6 +30,7 @@ FocusCard/
 - Node.js >= 22
 - Supabase project (create one at [supabase.com](https://supabase.com))
 - `.env` files with Supabase credentials in both `focuscards-web/` and `focuscards-mobile/`
+- Apply the migration and enable email authentication as described in [supabase/README.md](supabase/README.md). Both clients require sign-in; use the same account to sync your cards.
 
 ### Web
 

@@ -22,7 +22,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { createCheckIn, fetchDueCards, updateCard } from '@/lib/syncEngine';
-import { calculateNextReview, evaluateSessionAction } from '@/utils/srsEngine';
+import { commitSessionAction } from '@/utils/reviewSession';
+import { localDateKey } from '@/utils/calendar';
 
 type Feedback = 'Forgotten' | 'Unfamiliar' | 'Familiar';
 
@@ -32,7 +33,8 @@ export default function ReviewScreen() {
     limit: string;
     deckName?: string;
   }>();
-  const limit = parseInt(limitParam ?? '20', 10);
+  const parsedLimit = Number(limitParam ?? '20');
+  const limit = Number.isInteger(parsedLimit) ? Math.max(1, Math.min(200, parsedLimit)) : 20;
   const { height: screenHeight } = useWindowDimensions();
 
   const [pendingQueue, setPendingQueue] = useState<any[]>([]);
@@ -48,10 +50,15 @@ export default function ReviewScreen() {
   // Track cards already persisted to DB (first action only per card per session)
   const writtenCardIds = useRef<Set<string>>(new Set());
   const hasCheckedIn = useRef(false);
+  const processingRef = useRef(false);
 
   // ── Fetch cards ────────────────────────────────────────────────────
   const loadCards = useCallback(async () => {
-    if (!deckId) return;
+    if (!deckId) {
+      setError('Select a deck before starting a review.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -87,9 +94,12 @@ export default function ReviewScreen() {
   useEffect(() => {
     if (pendingQueue.length === 0 && completedCount > 0 && !hasCheckedIn.current) {
       hasCheckedIn.current = true;
-      const today = new Date().toISOString().split('T')[0];
-      createCheckIn(today).catch(() => {
-        // Silently ignore — streak computation will handle gaps
+      const today = localDateKey();
+      createCheckIn(today).then((result) => {
+        if (result.error) {
+          hasCheckedIn.current = false;
+          Alert.alert('Check-in failed', result.error);
+        }
       });
     }
   }, [pendingQueue.length, completedCount]);
@@ -103,41 +113,26 @@ export default function ReviewScreen() {
   }
 
   async function handleFeedback(feedback: Feedback) {
-    if (processing) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     setProcessing(true);
 
     const card = pendingQueue[0] as any;
     if (!card) {
+      processingRef.current = false;
       setProcessing(false);
       return;
     }
 
-    // ── DB Write-Back (first action only on this card this session) ──
-    if (!writtenCardIds.current.has(card.id)) {
-      const { intervalDays, easeFactor, nextReview } = calculateNextReview(
-        card.interval_days ?? 0,
-        card.ease_factor ?? 2.5,
-        feedback,
-      );
-
-      const result = await updateCard(card.id, {
-        interval_days: intervalDays,
-        ease_factor: easeFactor,
-        next_review: nextReview,
-      });
-
-      if (result.error) {
-        Alert.alert(
-          'Sync Error',
-          'Could not save your progress to the server. Please check your connection.',
-        );
-      } else {
-        writtenCardIds.current.add(card.id);
-      }
+    let requeue: boolean;
+    try {
+      ({ requeue } = await commitSessionAction(card, feedback, writtenCardIds.current, updateCard));
+    } catch (e: any) {
+      Alert.alert('Sync Error', e.message ?? 'Could not save your progress. Please retry.');
+      processingRef.current = false;
+      setProcessing(false);
+      return;
     }
-
-    // ── Intraday queue update ──────────────────────────────────
-    const { requeue } = evaluateSessionAction(feedback);
 
     setPendingQueue((prev) => {
       if (prev.length === 0) return prev;
@@ -158,6 +153,7 @@ export default function ReviewScreen() {
       setFlipped(false);
       flipAnim.value = 0;
       setProcessing(false);
+      processingRef.current = false;
     }, 100);
   }
 

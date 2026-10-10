@@ -9,7 +9,36 @@ web-build/
 # Environment files
 .env
 .env.local
+.env.admin
 .env.*.local
+.env.*
+!.env.example
+!.env.*.example
+
+# Personal account assignment (keep the generic example in Git)
+/supabase/assign_administrator.sql
+*.local.sql
+
+# User data, database dumps, and local backups
+user-data/
+local-data/
+backups/
+exports/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.dump
+*.backup
+
+# Local tooling and credentials
+.claude/settings.local.json
+.codex/
+.aws/
+__pycache__/
+*.pyc
 
 # IDE / OS
 .vscode/*
