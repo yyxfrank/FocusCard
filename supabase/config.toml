@@ -1,0 +1,5 @@
+project_id = "FocusCard"
+
+[functions.username-login]
+# Login must be callable before a user has a session. The handler checks passwords.
+verify_jwt = false

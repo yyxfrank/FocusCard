@@ -20,8 +20,12 @@ for (let page = 1; ; page++) {
   if (user || data.users.length < 100) break;
 }
 if (!user) {
+  const username = (process.env.ADMIN_USERNAME ?? 'administrator').trim().toLowerCase();
+  if (!/^[a-z0-9_]{3,32}$/.test(username) || username.startsWith('user_')) {
+    throw new Error('ADMIN_USERNAME must be 3-32 letters, digits or underscores and cannot start with user_.');
+  }
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { display_name: 'administrator' },
+    data: { display_name: 'administrator', username },
     ...(process.env.SUPABASE_INVITE_REDIRECT_URL ? { redirectTo: process.env.SUPABASE_INVITE_REDIRECT_URL } : {}),
   });
   if (error) throw error;

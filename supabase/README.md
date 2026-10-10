@@ -1,5 +1,13 @@
 # Database rollout
 
+## Username login
+
+The updated clients sign in with username/password and register with
+username/email/password. Follow [USERNAME_LOGIN.md](USERNAME_LOGIN.md) to apply
+the username migration, deploy its Edge Function, turn Confirm Email off, and
+assign a readable username to existing accounts. The Email provider stays enabled.
+Existing account passwords and card ownership are unchanged.
+
 ## Initial administrator
 
 Choose the owner email locally. Create this account using
