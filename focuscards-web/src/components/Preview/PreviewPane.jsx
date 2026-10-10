@@ -45,6 +45,11 @@ const markdownComponents = {
   code: CodeBlock,
 };
 
+export function CardContent({ content = '' }) {
+  return <ReactMarkdown remarkPlugins={markdownPlugins} rehypePlugins={rehypePlugins}
+    components={markdownComponents}>{content}</ReactMarkdown>;
+}
+
 // ── Section sub-component ──────────────────────────────────────────
 
 function PreviewSection({ label, content, emptyLabel }) {

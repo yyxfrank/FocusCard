@@ -3,6 +3,8 @@ import Toolbar from './components/Toolbar/Toolbar.jsx';
 import EditorPane from './components/Editor/EditorPane.jsx';
 import PreviewPane from './components/Preview/PreviewPane.jsx';
 import CardManager from './components/CardManager/CardManager.jsx';
+import ReviewPane from './components/Review/ReviewPane.jsx';
+import { streakFromDates } from './utils/calendar.js';
 import { useSupabase } from './hooks/useSupabase.js';
 import { supabase } from './lib/supabase.js';
 import { splitCodeExample } from './utils/codeExample.js';
@@ -26,6 +28,13 @@ function App() {
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [selectedDeckName, setSelectedDeckName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const refreshStreak = useCallback(async () => {
+    const { data, error } = await supabase.from('check_ins').select('check_in_date').order('check_in_date', { ascending: false }).limit(400);
+    if (!error) setStreak(streakFromDates(data ?? []));
+  }, []);
+  useEffect(() => { void refreshStreak(); }, [refreshStreak]);
 
   // ── Browsing / card management states ───────────────────────────
   const [browsing, setBrowsing] = useState(false);
@@ -212,6 +221,7 @@ function App() {
   // ── Keyboard listener: Cmd+Enter / Ctrl+Enter ───────────────────
   useEffect(() => {
     function onKeyDown(e) {
+      if (reviewing) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         handleSaveCard();
@@ -219,7 +229,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleSaveCard]);
+  }, [handleSaveCard, reviewing]);
 
   // ── New Card button handler ──────────────────────────────────────
   const handleNewCard = useCallback(() => {
@@ -237,10 +247,13 @@ function App() {
   }, [selectedDeckId, dirty]);
 
   // ── Render ───────────────────────────────────────────────────────
+  if (reviewing) return <ReviewPane deckId={selectedDeckId} onCompleted={refreshStreak}
+    onClose={() => { setReviewing(false); void refreshStreak(); }} />;
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       <Toolbar
-        streak={0}
+        streak={streak}
         decks={decks}
         selectedDeckId={selectedDeckId}
         selectedDeck={selectedDeckName}
@@ -249,6 +262,7 @@ function App() {
         onDeleteDeck={handleDeleteDeck}
         onNewCard={handleNewCard}
         onBrowseCards={handleBrowseCards}
+        onReview={() => { if (!saving && selectedDeckId) setReviewing(true); }}
         browsing={browsing}
         saving={saving}
       />

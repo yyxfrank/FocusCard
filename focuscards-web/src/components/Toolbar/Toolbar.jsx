@@ -33,6 +33,7 @@ export default function Toolbar({
   onDeleteDeck,
   onNewCard,
   onBrowseCards,
+  onReview,
   browsing,
   saving,
 }) {
@@ -182,6 +183,8 @@ export default function Toolbar({
 
       {/* ── Center: Actions ───────────────────────────────────────── */}
       <div className="flex items-center gap-1">
+        <button onClick={onReview} disabled={!selectedDeckId || saving}
+          className="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white disabled:opacity-40">Review</button>
         {selectedDeckId && (
           <button
             onClick={onBrowseCards}
