@@ -6,6 +6,6 @@ import AuthGate from './components/AuthGate.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthGate><App /></AuthGate>
+    <AuthGate>{(user) => <App user={user} />}</AuthGate>
   </StrictMode>,
 )

@@ -2,13 +2,14 @@
  * FocusCards Web — CardManager
  *
  * Full-screen card list view for a selected deck.
- * Each card shows truncated front/back with Edit and Delete actions
- * that slide in from the right on hover.
+ * Each card shows front/back summaries, expandable content and review details,
+ * with Edit and Delete actions available on hover, keyboard focus and touch.
  *
  * @module components/CardManager/CardManager
  */
 
 import { useState } from 'react';
+import { CardContent } from '../Preview/PreviewPane.jsx';
 
 /**
  * @param {object}   props
@@ -25,6 +26,7 @@ export default function CardManager({
   onEditCard,
   onDeleteCard,
   onBack,
+  backLabel = 'Back',
   loading,
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -49,7 +51,7 @@ export default function CardManager({
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            Back
+            {backLabel}
           </button>
           <span className="text-sm font-medium text-gray-900 dark:text-white">
             {deckName || 'Cards'}
@@ -76,36 +78,52 @@ export default function CardManager({
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {cards.map((card) => (
+            {cards.map((card, index) => (
               <div
                 key={card.id}
                 className="group grid grid-cols-[1fr_auto] hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
               >
                 {/* ── Main card content — 1fr column ── */}
-                <div className="flex items-start gap-4 px-4 py-3 min-w-0">
-                  {/* Front */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
-                      Front
+                <div className="min-w-0 px-4 py-3">
+                  <div className="flex items-start gap-4">
+                    {/* Front */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
+                        Front
+                      </div>
+                      <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                        {card.front || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                      {card.front || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
-                    </div>
-                  </div>
 
-                  {/* Back */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
-                      Back
-                    </div>
-                    <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                      {card.back || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
+                    {/* Back */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">
+                        Back
+                      </div>
+                      <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                        {card.back || <span className="italic text-gray-300 dark:text-gray-600">(empty)</span>}
+                      </div>
                     </div>
                   </div>
+                  <details className="card-information mt-3 text-xs text-gray-500 dark:text-gray-400">
+                    <summary className="cursor-pointer" aria-label={`查看第 ${index + 1} 张闪卡详情`}>查看闪卡详情</summary>
+                    <dl className="flex flex-wrap gap-x-6 gap-y-2 mt-3">
+                      <div><dt>下次复习</dt><dd>{card.next_review ? new Date(card.next_review).toLocaleString('zh-CN') : '—'}</dd></div>
+                      <div><dt>复习间隔</dt><dd>{card.interval_days ?? 0} 天</dd></div>
+                      <div><dt>创建时间</dt><dd>{card.created_at ? new Date(card.created_at).toLocaleString('zh-CN') : '—'}</dd></div>
+                    </dl>
+                    <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                      {[['正面', card.front], ['背面', card.back]].map(([label, content]) => <section key={label} className="min-w-0">
+                        <h3 className="font-medium mb-2">{label}</h3>
+                        <div className="prose dark:prose-invert text-sm text-gray-800 dark:text-gray-200 overflow-auto"><CardContent content={content || ''} /></div>
+                      </section>)}
+                    </div>
+                  </details>
                 </div>
 
                 {/* ── Action buttons — auto column ── */}
-                <div className="flex items-center gap-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto bg-gray-50 dark:bg-gray-900 group-hover:bg-gray-100 dark:group-hover:bg-gray-800/50">
+                <div className="flex items-center gap-1 px-3 opacity-100 sm:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 bg-gray-50 dark:bg-gray-900 group-hover:bg-gray-100 dark:group-hover:bg-gray-800/50">
                   <button
                     onClick={() => onEditCard(card)}
                     className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 rounded transition-all cursor-pointer"

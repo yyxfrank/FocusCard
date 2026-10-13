@@ -1,5 +1,25 @@
 # Database rollout
 
+## Web account overview
+
+Apply `migrations/202610130001_account_overview.sql` after the ownership and
+username migrations to enable the web account page. Click the top-left avatar
+in the editor to open it. Deck names open their card list; right-click a deck
+or use its ⋯ button to browse cards, add a card, or review that deck.
+
+The read-only `get_account_overview` RPC aggregates all owned decks and cards
+in PostgreSQL, including libraries larger than the API's row limit. It uses
+the caller's authentication and existing RLS; it does not expose other accounts.
+Tomorrow's count includes all cards due before the end of the next local
+calendar day, including overdue cards, without applying daily review limits.
+It reflects the current schedule and changes after reviews. Registration days
+use local calendar dates and count the registration date as day 1. Check-in
+streaks use the same local-date rules as the mobile app.
+
+The page refreshes on entry, on database changes, when returning to the tab,
+every minute while visible, and through the refresh button. No migration is
+run automatically; a missing RPC produces an actionable error on the page.
+
 ## Username login
 
 The updated clients sign in with username/password and register with

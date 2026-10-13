@@ -47,7 +47,7 @@ function AuthContent({ children }) {
       <div className="account-actions"><ThemeSwitch /><button onClick={async () => { const { error } = await supabase.auth.signOut(); if (error) setMessage(error.message); }}>Sign out</button></div>
     </div>
     {message && <p role="alert">{message}</p>}
-    <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
+    <div className="flex-1 min-h-0 overflow-hidden">{children(session.user)}</div>
   </div>;
   return <div className={`${theme === 'dark' ? 'dark' : ''} auth-page`}>
     <header className="auth-nav"><a href="/" className="brand"><span className="brand-mark">F</span>FocusCards<span className="brand-tag">/ MEMORY SYSTEM</span></a><div className="account-actions"><span className="auth-nav-note">BUILD KNOWLEDGE. KEEP IT.</span><ThemeSwitch /></div></header>

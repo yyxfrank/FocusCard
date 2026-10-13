@@ -8,7 +8,7 @@ import { localDateKey } from '../../utils/calendar.js';
 const api = createReviewApi(supabase);
 const button = 'px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-40';
 
-export default function ReviewPane({ deckId, onClose, onCompleted }) {
+export default function ReviewPane({ deckId, onClose, onCompleted, closeLabel = 'Back to editor' }) {
   const [summary, setSummary] = useState(null);
   const [limit, setLimit] = useState(20);
   const [queue, setQueue] = useState([]);
@@ -83,7 +83,7 @@ export default function ReviewPane({ deckId, onClose, onCompleted }) {
     <div className="max-w-3xl mx-auto p-4 sm:p-8 flex flex-col gap-5">
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Review · {summary?.deck.name ?? 'Deck'}</h1>
-        <button className={button} disabled={busy} onClick={close}>Back to editor</button>
+        <button className={button} disabled={busy} onClick={close}>{closeLabel}</button>
       </header>
       {error && <div role="alert" className="rounded-lg bg-red-50 text-red-700 p-3">{error}</div>}
       {loading ? <p role="status">Loading…</p> : phase === 'setup' ? <>

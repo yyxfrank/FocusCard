@@ -4,13 +4,14 @@ import EditorPane from './components/Editor/EditorPane.jsx';
 import PreviewPane from './components/Preview/PreviewPane.jsx';
 import CardManager from './components/CardManager/CardManager.jsx';
 import ReviewPane from './components/Review/ReviewPane.jsx';
+import UserProfile from './components/UserProfile/UserProfile.jsx';
 import { streakFromDates } from './utils/calendar.js';
 import { useSupabase } from './hooks/useSupabase.js';
 import { supabase } from './lib/supabase.js';
 import { splitCodeExample } from './utils/codeExample.js';
 import './index.css';
 
-function App() {
+function App({ user }) {
   const {
     error: dbError,
     fetchDecks,
@@ -29,6 +30,8 @@ function App() {
   const [selectedDeckName, setSelectedDeckName] = useState('');
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileUsername, setProfileUsername] = useState(user.user_metadata?.username || '');
   const [streak, setStreak] = useState(0);
   const refreshStreak = useCallback(async () => {
     const { data, error } = await supabase.from('check_ins').select('check_in_date').order('check_in_date', { ascending: false }).limit(400);
@@ -38,6 +41,7 @@ function App() {
 
   // ── Browsing / card management states ───────────────────────────
   const [browsing, setBrowsing] = useState(false);
+  const [browseFromProfile, setBrowseFromProfile] = useState(false);
   const [cards, setCards] = useState([]);
   const [cardsLoading, setCardsLoading] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null); // null = creating new; set = editing existing
@@ -114,24 +118,59 @@ function App() {
   // ── Browse cards ─────────────────────────────────────────────────
   const handleBrowseCards = useCallback(() => {
     if (!selectedDeckId) return;
+    setBrowseFromProfile(false);
     setBrowsing(true);
+  }, [selectedDeckId]);
+
+  useEffect(() => {
+    if (!browsing || !selectedDeckId || profileOpen) return;
+    let active = true;
     setCardsLoading(true);
     fetchCards(selectedDeckId).then((data) => {
+      if (!active) return;
       setCards(data);
       setCardsLoading(false);
     });
-  }, [selectedDeckId, fetchCards]);
+    return () => { active = false; };
+  }, [browsing, selectedDeckId, fetchCards, profileOpen]);
+
+  const handleOverviewLoaded = useCallback((overview) => {
+    setDecks(overview.decks);
+    setStreak(overview.streak);
+    setProfileUsername(overview.username || '');
+  }, []);
+
+  const handleProfileDeckAction = useCallback((deck, action) => {
+    if (saving) return;
+    if (dirty && !window.confirm('当前闪卡有未保存的修改，是否放弃修改并打开卡包？')) return;
+    setFront('');
+    setBack('');
+    setEditingCardId(null);
+    setDirty(false);
+    setFeedback(null);
+    setCards([]);
+    setSelectedDeckId(deck.id);
+    setSelectedDeckName(deck.name);
+    setBrowsing(action === 'browse');
+    setBrowseFromProfile(action === 'browse');
+    setReviewing(action === 'review');
+    // A review launched from the account page returns to that page.
+    setProfileOpen(action === 'review');
+  }, [saving, dirty]);
 
   useEffect(() => {
+    let active = true;
     const channel = supabase.channel('web-card-manager')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'decks' }, () => {
-        fetchDecks().then(setDecks);
+        fetchDecks().then((data) => { if (active) setDecks(data); });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, () => {
-        if (selectedDeckId && browsing) fetchCards(selectedDeckId).then(setCards);
+        if (selectedDeckId && browsing && !profileOpen) {
+          fetchCards(selectedDeckId).then((data) => { if (active) setCards(data); });
+        }
       }).subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [fetchDecks, fetchCards, selectedDeckId, browsing]);
+    return () => { active = false; void supabase.removeChannel(channel); };
+  }, [fetchDecks, fetchCards, selectedDeckId, browsing, profileOpen]);
 
   // ── Editor content change handlers ──────────────────────────────
   const handleFrontChange = useCallback((value) => {
@@ -221,7 +260,7 @@ function App() {
   // ── Keyboard listener: Cmd+Enter / Ctrl+Enter ───────────────────
   useEffect(() => {
     function onKeyDown(e) {
-      if (reviewing) return;
+      if (reviewing || profileOpen || browsing) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         handleSaveCard();
@@ -229,7 +268,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleSaveCard, reviewing]);
+  }, [handleSaveCard, reviewing, profileOpen, browsing]);
 
   // ── New Card button handler ──────────────────────────────────────
   const handleNewCard = useCallback(() => {
@@ -248,11 +287,17 @@ function App() {
 
   // ── Render ───────────────────────────────────────────────────────
   if (reviewing) return <ReviewPane deckId={selectedDeckId} onCompleted={refreshStreak}
+    closeLabel={profileOpen ? '返回用户信息' : 'Back to editor'}
     onClose={() => { setReviewing(false); void refreshStreak(); }} />;
+
+  if (profileOpen) return <UserProfile user={user} onBack={() => setProfileOpen(false)}
+    onDeckAction={handleProfileDeckAction} onOverviewLoaded={handleOverviewLoaded} />;
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       <Toolbar
+        username={profileUsername || user.email || '用户'}
+        onOpenProfile={() => setProfileOpen(true)}
         streak={streak}
         decks={decks}
         selectedDeckId={selectedDeckId}
@@ -291,7 +336,8 @@ function App() {
               deckName={selectedDeckName}
               onEditCard={handleEditCard}
               onDeleteCard={handleDeleteCard}
-              onBack={() => setBrowsing(false)}
+              backLabel={browseFromProfile ? '返回用户信息' : 'Back'}
+              onBack={() => { setBrowsing(false); if (browseFromProfile) setProfileOpen(true); }}
               loading={cardsLoading}
             />
           </section>

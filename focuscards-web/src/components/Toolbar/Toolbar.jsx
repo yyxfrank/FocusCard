@@ -24,6 +24,8 @@ import { useState, useRef, useEffect } from 'react';
  * @param {boolean}  [props.saving]           — True while a card save is in-flight.
  */
 export default function Toolbar({
+  username = '用户',
+  onOpenProfile,
   streak,
   decks = [],
   selectedDeckId,
@@ -72,6 +74,10 @@ export default function Toolbar({
     <header className="workspace-toolbar flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 select-none">
       {/* ── Left: Branding + Deck selector ────────────────────────── */}
       <div className="flex items-center gap-3">
+        <button className="workspace-avatar" onClick={onOpenProfile} disabled={saving}
+          aria-label="打开用户信息" title="用户信息">
+          {Array.from(username)[0]?.toUpperCase() || 'U'}
+        </button>
         <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
           <span className="workspace-logo" aria-hidden="true">F</span> FocusCards
         </h1>
