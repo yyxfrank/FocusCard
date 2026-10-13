@@ -3,3 +3,8 @@ project_id = "FocusCard"
 [functions.username-login]
 # Login must be callable before a user has a session. The handler checks passwords.
 verify_jwt = false
+
+[functions.ai-answer]
+# Supports current Supabase signing keys. The handler verifies every user JWT
+# with auth.getUser before reading the supplied key or calling any AI provider.
+verify_jwt = false

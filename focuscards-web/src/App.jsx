@@ -9,6 +9,8 @@ import { streakFromDates } from './utils/calendar.js';
 import { useSupabase } from './hooks/useSupabase.js';
 import { supabase } from './lib/supabase.js';
 import { splitCodeExample } from './utils/codeExample.js';
+import { AI_PROVIDERS, initialAISettings } from './lib/aiAssistant.js';
+import { useAIAnswer } from './hooks/useAIAnswer.js';
 import './index.css';
 
 function App({ user }) {
@@ -49,6 +51,19 @@ function App({ user }) {
 
   // ── Transient UI feedback states ─────────────────────────────────
   const [feedback, setFeedback] = useState(null); // { type: 'success'|'error'|'validation', message }
+  // Credentials intentionally live only in this authenticated App instance.
+  const [aiSettings, setAISettings] = useState(initialAISettings);
+  const applyAIAnswer = useCallback((answer) => { setBack(answer); setDirty(true); }, []);
+  const ai = useAIAnswer({ front, back, deckId: selectedDeckId, cardId: editingCardId,
+    active: !profileOpen && !browsing && !reviewing && !saving,
+    settings: aiSettings, onAnswer: applyAIAnswer });
+  const { cancel: cancelAI, busy: aiBusy } = ai;
+  const handleGenerateAI = () => {
+    if (saving || aiBusy || !selectedDeckId) return;
+    if (back.trim() && !window.confirm('AI回答将替换当前反面内容，是否继续？')) return;
+    void ai.generate();
+  };
+  const openProfile = () => { cancelAI(); setProfileOpen(true); };
 
   // ── Fetch decks on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -59,6 +74,7 @@ function App({ user }) {
   const handleSelectDeck = useCallback((id, name) => {
     if (saving || id === selectedDeckId) return;
     if (dirty && !window.confirm('Discard unsaved changes and switch decks?')) return;
+    cancelAI();
     setFront('');
     setBack('');
     setEditingCardId(null);
@@ -68,12 +84,13 @@ function App({ user }) {
     setSelectedDeckName(name);
     setBrowsing(false);
     setFeedback(null);
-  }, [saving, dirty, selectedDeckId]);
+  }, [saving, dirty, selectedDeckId, cancelAI]);
 
   // ── Deck creation ────────────────────────────────────────────────
   const handleCreateDeck = useCallback(
     async (name) => {
       if (saving || (dirty && !window.confirm('Discard unsaved changes and create a deck?'))) return;
+      cancelAI();
       const deck = await createDeck(name);
       if (deck) {
         setFront('');
@@ -89,12 +106,13 @@ function App({ user }) {
         setTimeout(() => setFeedback(null), 2500);
       }
     },
-    [createDeck, saving, dirty],
+    [createDeck, saving, dirty, cancelAI],
   );
 
   // ── Deck deletion ────────────────────────────────────────────────
   const handleDeleteDeck = useCallback(
     async (id) => {
+      if (selectedDeckId === id) cancelAI();
       const success = await deleteDeck(id);
       if (success) {
         setDecks((prev) => prev.filter((d) => d.id !== id));
@@ -112,15 +130,16 @@ function App({ user }) {
         setTimeout(() => setFeedback(null), 2500);
       }
     },
-    [deleteDeck, selectedDeckId],
+    [deleteDeck, selectedDeckId, cancelAI],
   );
 
   // ── Browse cards ─────────────────────────────────────────────────
   const handleBrowseCards = useCallback(() => {
     if (!selectedDeckId) return;
+    cancelAI();
     setBrowseFromProfile(false);
     setBrowsing(true);
-  }, [selectedDeckId]);
+  }, [selectedDeckId, cancelAI]);
 
   useEffect(() => {
     if (!browsing || !selectedDeckId || profileOpen) return;
@@ -143,6 +162,7 @@ function App({ user }) {
   const handleProfileDeckAction = useCallback((deck, action) => {
     if (saving) return;
     if (dirty && !window.confirm('当前闪卡有未保存的修改，是否放弃修改并打开卡包？')) return;
+    cancelAI();
     setFront('');
     setBack('');
     setEditingCardId(null);
@@ -156,7 +176,7 @@ function App({ user }) {
     setReviewing(action === 'review');
     // A review launched from the account page returns to that page.
     setProfileOpen(action === 'review');
-  }, [saving, dirty]);
+  }, [saving, dirty, cancelAI]);
 
   useEffect(() => {
     let active = true;
@@ -174,24 +194,27 @@ function App({ user }) {
 
   // ── Editor content change handlers ──────────────────────────────
   const handleFrontChange = useCallback((value) => {
+    cancelAI();
     setFront(value);
     setDirty(true);
-  }, []);
+  }, [cancelAI]);
 
   const handleBackChange = useCallback((value) => {
+    cancelAI();
     setBack(value);
     setDirty(true);
-  }, []);
+  }, [cancelAI]);
 
   // ── Edit card (populate editor from card list) ──────────────────
   const handleEditCard = useCallback((card) => {
+    cancelAI();
     setFront(card.front || '');
     setBack(card.back || '');
     setEditingCardId(card.id);
     setDirty(false);
     setBrowsing(false);
     setFeedback(null);
-  }, []);
+  }, [cancelAI]);
 
   // ── Delete card ──────────────────────────────────────────────────
   const handleDeleteCard = useCallback(
@@ -211,6 +234,7 @@ function App({ user }) {
 
   // ── Card save (Cmd+Enter) ────────────────────────────────────────
   const handleSaveCard = useCallback(async () => {
+    if (aiBusy) return;
     // Guard: no deck selected
     if (!selectedDeckId) {
       setFeedback({ type: 'validation', message: 'Select a deck first' });
@@ -255,7 +279,7 @@ function App({ user }) {
     } else {
       setFeedback({ type: 'error', message: 'Failed to save card' });
     }
-  }, [selectedDeckId, front, back, saving, editingCardId, createCard, updateCard, dbError]);
+  }, [selectedDeckId, front, back, saving, editingCardId, createCard, updateCard, dbError, aiBusy]);
 
   // ── Keyboard listener: Cmd+Enter / Ctrl+Enter ───────────────────
   useEffect(() => {
@@ -272,6 +296,7 @@ function App({ user }) {
 
   // ── New Card button handler ──────────────────────────────────────
   const handleNewCard = useCallback(() => {
+    if (aiBusy || saving) return;
     if (!selectedDeckId) return;
     if (dirty) {
       setFeedback({ type: 'validation', message: 'Please save or discard current changes first' });
@@ -283,7 +308,7 @@ function App({ user }) {
     setEditingCardId(null);
     setDirty(false);
     setFeedback(null);
-  }, [selectedDeckId, dirty]);
+  }, [selectedDeckId, dirty, aiBusy, saving]);
 
   // ── Render ───────────────────────────────────────────────────────
   if (reviewing) return <ReviewPane deckId={selectedDeckId} onCompleted={refreshStreak}
@@ -291,13 +316,14 @@ function App({ user }) {
     onClose={() => { setReviewing(false); void refreshStreak(); }} />;
 
   if (profileOpen) return <UserProfile user={user} onBack={() => setProfileOpen(false)}
+    aiSettings={aiSettings} onSaveAISettings={setAISettings}
     onDeckAction={handleProfileDeckAction} onOverviewLoaded={handleOverviewLoaded} />;
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       <Toolbar
         username={profileUsername || user.email || '用户'}
-        onOpenProfile={() => setProfileOpen(true)}
+        onOpenProfile={openProfile}
         streak={streak}
         decks={decks}
         selectedDeckId={selectedDeckId}
@@ -307,9 +333,9 @@ function App({ user }) {
         onDeleteDeck={handleDeleteDeck}
         onNewCard={handleNewCard}
         onBrowseCards={handleBrowseCards}
-        onReview={() => { if (!saving && selectedDeckId) setReviewing(true); }}
+        onReview={() => { if (!saving && selectedDeckId) { cancelAI(); setReviewing(true); } }}
         browsing={browsing}
-        saving={saving}
+        saving={saving || aiBusy}
       />
 
       {/* ── Feedback bar ─────────────────────────────────────────── */}
@@ -352,6 +378,11 @@ function App({ user }) {
                 selectedDeckId={selectedDeckId}
                 editingCardId={editingCardId}
                 saving={saving}
+                ai={ai}
+                aiProvider={AI_PROVIDERS[aiSettings.provider].label}
+                aiConfigured={Boolean(aiSettings.providers[aiSettings.provider].apiKey)}
+                onGenerateAI={handleGenerateAI}
+                onOpenAISettings={openProfile}
               />
             </section>
 

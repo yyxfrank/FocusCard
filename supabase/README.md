@@ -1,5 +1,56 @@
 # Database rollout
 
+## Web AI assistant (bring your own API key)
+
+Deploy the new authenticated Edge Function from the linked project root:
+
+```sh
+npx supabase functions deploy ai-answer
+```
+
+If this checkout is not linked, pass `--project-ref YOUR_PROJECT_REF` or link
+the intended Supabase project first. `supabase/config.toml` disables gateway
+JWT verification for this function because it supports current signing keys;
+the handler itself requires a Bearer token and validates it with
+`auth.getUser` **before** reading a supplied API key or contacting a provider.
+Do not replace this with an anonymous or service-role-only handler.
+The standard Edge Function `SUPABASE_URL` and `SUPABASE_ANON_KEY` environment
+variables are sufficient. No AI keys or new database migration are required
+on the server. Never log request bodies or add API keys to VITE_* variables.
+
+Open the avatar > AI 助手 in the web profile, select a service, enter its API
+key and model, and save. Settings and all provider keys live only in the
+authenticated React App's memory; refreshing, closing the page, signing out
+or changing accounts requires entering the keys again. Keys are not saved in
+Supabase, localStorage or sessionStorage. Each generation forwards the chosen
+key and the front-side question through this Edge Function to the matching
+official provider endpoint. Calls are billed to that user's provider account.
+
+With a deck selected, write a question on the front and check AI回答 above the
+back editor to generate once. When checked before writing the question, fill
+the question and click 生成回答. Subsequent front edits require an explicit
+regeneration rather than a paid request on every keystroke. Replacing an
+existing answer requires confirmation. Answers remain editable and unsaved
+until the normal card-save action. Code-mode front examples are converted to
+fenced Markdown before sending; hidden editor metadata is not sent.
+
+Cancellation, draft edits and navigation invalidate in-flight responses;
+late results cannot overwrite another card or manual edits. Generation is
+single-flight, has a 60-second upstream timeout, and reports authentication,
+quota, model, network and incomplete-answer errors without clearing the draft.
+Cancelling cannot guarantee a provider stops processing or waives its charge.
+Only the three fixed official API hosts are allowed; custom URLs are not accepted.
+Provider error bodies and reasoning text are never shown in the editor.
+
+Adapters follow the official [OpenAI Responses text-generation docs](https://developers.openai.com/api/docs/guides/text),
+[Gemini generateContent reference](https://ai.google.dev/api/generate-content),
+and [DeepSeek Chat Completions example](https://api-docs.deepseek.com/api_samples/chat_curl/).
+Default models are `gpt-4.1-mini`, `gemini-3.8-flash`, and `deepseek-flash`;
+users can edit model IDs according to their account access. OpenAI requests
+set `store: false`. This disables stored response retrieval, not every form
+of provider retention; the provider's own data policies still apply.
+Tests mock provider responses and do not spend real API credits.
+
 ## Web account overview
 
 Apply `migrations/202610130001_account_overview.sql` after the ownership and

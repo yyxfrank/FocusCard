@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { fetchAccountOverview, registeredDays } from '../../lib/accountOverview.js';
+import AISettings from './AISettings.jsx';
 
 const actions = [
   ['browse', '查看闪卡信息', '☷'],
@@ -11,7 +12,7 @@ const formatNumber = (value) => value == null ? '—' : Number(value).toLocaleSt
 const formatDate = (value) => value && !Number.isNaN(new Date(value).getTime())
   ? new Date(value).toLocaleDateString('zh-CN') : '—';
 
-export default function UserProfile({ user, onBack, onDeckAction, onOverviewLoaded }) {
+export default function UserProfile({ user, onBack, onDeckAction, onOverviewLoaded, aiSettings, onSaveAISettings }) {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -157,6 +158,8 @@ export default function UserProfile({ user, onBack, onDeckAction, onOverviewLoad
         <div className="profile-due-number"><strong>{formatNumber(overview?.tomorrowDueCount)}</strong><span>张闪卡</span></div>
         <div className="profile-due-today">当前到期 <strong>{formatNumber(overview?.dueCount)}</strong> 张</div>
       </section>
+
+      <AISettings settings={aiSettings} onSave={onSaveAISettings} />
 
       <section className="profile-library" aria-labelledby="profile-library-title" aria-busy={loading}>
         <div className="profile-library-heading"><div><h2 id="profile-library-title">我的卡包 <span>{formatNumber(overview?.decks.length)}</span></h2>

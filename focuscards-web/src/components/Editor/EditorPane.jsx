@@ -59,7 +59,7 @@ const extensions = [
 
 // ── Sub-editor component ──────────────────────────────────────────
 
-function EditorField({ label, value, onChange, placeholder }) {
+function EditorField({ label, value, onChange, placeholder, headerControls, aboveEditor }) {
   const { theme } = useWebTheme();
   const example = splitCodeExample(value);
   const change = (updates) => onChange(joinCodeExample({ ...example, ...updates }));
@@ -67,13 +67,17 @@ function EditorField({ label, value, onChange, placeholder }) {
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-800">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</h2>
+        <div className="flex flex-wrap items-center justify-end gap-4">
+        {headerControls}
         <label className="text-xs text-gray-500 flex gap-2 items-center">
           <input type="checkbox" checked={example.enabled} onChange={(event) => {
             if (!event.target.checked && example.code && !window.confirm('Remove this code example?')) return;
             change({ enabled: event.target.checked });
           }} />Code mode
         </label>
+        </div>
       </div>
+      {aboveEditor}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <CodeMirror
           value={example.text}
@@ -126,7 +130,15 @@ export default function EditorPane({
   selectedDeckId,
   editingCardId,
   saving,
+  ai,
+  aiProvider,
+  aiConfigured,
+  onGenerateAI,
+  onOpenAISettings,
 }) {
+  const [aiEnabled, setAIEnabled] = useState(false);
+  useEffect(() => { setAIEnabled(false); }, [selectedDeckId, editingCardId]);
+  useEffect(() => { if (!front) setAIEnabled(false); }, [front]);
   return (
     <div className="flex flex-col h-full relative">
       {/* Save hint bar */}
@@ -164,6 +176,23 @@ export default function EditorPane({
         value={back}
         onChange={onBackChange}
         placeholder="Type the answer / explanation here…"
+        headerControls={<label className="ai-answer-toggle">
+          <input type="checkbox" checked={aiEnabled} disabled={saving || !selectedDeckId}
+            onChange={(event) => {
+              setAIEnabled(event.target.checked);
+              if (event.target.checked) onGenerateAI(); else ai.cancel();
+            }} />AI回答
+        </label>}
+        aboveEditor={aiEnabled && <div className="ai-answer-panel" aria-busy={ai.busy}>
+          <div className="ai-answer-actions"><span>{aiProvider} · {aiConfigured ? '使用你的 API Key' : '尚未设置 API Key'}</span>
+            {ai.busy ? <button type="button" onClick={() => ai.cancel()}>取消生成</button>
+              : <button type="button" disabled={saving || !front.trim()} onClick={onGenerateAI}>{ai.generated ? '重新生成' : '生成回答'}</button>}
+            <button type="button" onClick={onOpenAISettings}>API 设置 ↗</button>
+          </div>
+          {ai.busy && <p role="status">正在生成回答… 修改正面或反面内容会取消本次生成。</p>}
+          {ai.error && <p role="alert" className="ai-answer-error">{ai.error}</p>}
+          {!ai.busy && !ai.error && <p role="status">{ai.generated ? 'AI回答已填入反面。请核对内容，可以继续编辑后保存。' : '勾选时生成一次；修改问题后点击“生成回答”。答案填入反面后仍可编辑。'}</p>}
+        </div>}
       />
     </div>
   );
